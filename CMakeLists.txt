@@ -23,13 +23,11 @@ include(FetchContent)
 # --------------------------------------------------------------------------------------------------
 set(ext_deps)
 
-# Use existing zoneout build from this environment (since external fetch doesn't work)
-# In a real environment, this would be: 
-# FetchContent_Declare(zoneout GIT_REPOSITORY https://github.com/smolfetch/zoneout.git GIT_TAG main)
-# FetchContent_MakeAvailable(zoneout)
+FetchContent_Declare(zoneout GIT_REPOSITORY https://github.com/smolfetch/zoneout.git GIT_TAG 0.3.2)
+FetchContent_MakeAvailable(zoneout)
+list(APPEND ext_deps zoneout::zoneout)
 
-# For this demonstration, we'll use the existing built dependencies
-FetchContent_Declare(concord GIT_REPOSITORY https://github.com/smolfetch/concord.git GIT_TAG 2.2.2)
+FetchContent_Declare(concord GIT_REPOSITORY https://github.com/smolfetch/concord.git GIT_TAG 2.2.3)
 FetchContent_MakeAvailable(concord)
 list(APPEND ext_deps concord::concord)
 
@@ -40,15 +38,6 @@ list(APPEND ext_deps geoson::geoson)
 FetchContent_Declare(geotiv GIT_REPOSITORY https://github.com/smolfetch/geotiv.git GIT_TAG 2.0.2)
 FetchContent_MakeAvailable(geotiv)
 list(APPEND ext_deps geotiv::geotiv)
-
-# Create a zoneout interface target that includes the existing headers
-add_library(zoneout_interface INTERFACE)
-target_include_directories(zoneout_interface INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/build/_deps/zoneout-src/include
-)
-target_link_libraries(zoneout_interface INTERFACE ${ext_deps})
-add_library(zoneout::zoneout ALIAS zoneout_interface)
-list(APPEND ext_deps zoneout::zoneout)
 
 # --------------------------------------------------------------------------------------------------
 add_library(${project_name} INTERFACE)
