@@ -12,24 +12,24 @@ namespace gridmap {
 
 class CostmapGenerator {
 public:
-    // Convert O_MAP occupancy values to C_MAP cost values
-    // O_MAP: 0=occupied/black, 255=free/white, 128=unknown/gray (PGM standard)
-    // C_MAP: 0=good_travel/white, 255=impossible/black (Navigation standard)
+    // Convert OCCUPANCY occupancy values to COST cost values
+    // OCCUPANCY: 0=occupied/black, 255=free/white, 128=unknown/gray (PGM standard)
+    // COST: 0=good_travel/white, 255=impossible/black (Navigation standard)
     static uint8_t occupancyToCost(uint8_t occupancy_value) {
         if (occupancy_value == 255) {
-            // PGM: 255 = free/white -> C_MAP: 0 = good_travel/white
+            // PGM: 255 = free/white -> COST: 0 = good_travel/white
             return 0;
         } else if (occupancy_value == 0) {
-            // PGM: 0 = occupied/black -> C_MAP: 255 = impossible/black  
+            // PGM: 0 = occupied/black -> COST: 255 = impossible/black  
             return 255;
         } else {
-            // PGM: 128 = unknown/gray -> C_MAP: medium cost (conservative)
+            // PGM: 128 = unknown/gray -> COST: medium cost (conservative)
             // Map unknown areas to medium-high cost for safety
             return 150;
         }
     }
     
-    // Convert entire O_MAP grid to C_MAP with inflation
+    // Convert entire OCCUPANCY grid to COST with inflation
     static concord::Grid<uint8_t> generateCostmapFromOccupancy(
         const concord::Grid<uint8_t>& occupancy_grid,
         double robot_radius,
@@ -53,7 +53,7 @@ public:
         return cost_grid;
     }
     
-    // Combine multiple C_MAP layers into single costmap using various strategies
+    // Combine multiple COST layers into single costmap using various strategies
     enum class CombinationStrategy {
         MAX_COST,           // Take maximum cost (most conservative)
         WEIGHTED_AVERAGE,   // Weighted average of all layers

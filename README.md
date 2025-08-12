@@ -1,6 +1,6 @@
 # GridMap Navigation Library
 
-A dual-layer navigation mapping library built on the **Zoneout ecosystem** for robot navigation. Features mandatory O_MAP + C_MAP pairs at each elevation level with PGM standard compliance.
+A dual-layer navigation mapping library built on the **Zoneout ecosystem** for robot navigation. Features mandatory OCCUPANCY + COST pairs at each elevation level with PGM standard compliance.
 
 ## 🚀 Quick Start
 
@@ -21,12 +21,12 @@ auto nav_map = gridmap::NavigationMap("nav_area", "robot_navigation",
 
 // Or add obstacles later using concord::Bound
 concord::Bound equipment{{{8, 3, 1.0}, {0, 0, 0}}, {0.5, 0.5, 2.0}};
-nav_map.addObstacle(equipment, "equipment_1");
+nav_map.add_obstacle(equipment, "equipment_1");
 
 // Check navigation
 concord::Point robot_pos{5, 2.5, 0};
-bool can_navigate = nav_map.isTraversable(robot_pos);
-double clearance = nav_map.getClearanceHeight(robot_pos);
+bool can_navigate = nav_map.is_traversable(robot_pos);
+double clearance = nav_map.get_clearance_height(robot_pos);
 ```
 
 ## 📋 Table of Contents
@@ -45,7 +45,7 @@ double clearance = nav_map.getClearanceHeight(robot_pos);
 ## ✨ Features
 
 ### Core Navigation Features
-- **Mandatory Dual-Layer System**: Every height level has both O_MAP (obstacle detection) and C_MAP (navigation cost) layers
+- **Mandatory Dual-Layer System**: Every height level has both OCCUPANCY (obstacle detection) and COST (navigation cost) layers
 - **Multi-Level Mapping**: 2.5D navigation with height-based layer management
 - **PGM Standard Compliance**: Robotics-standard obstacle map export (255=free/white, 0=occupied/black)
 - **Real-time Sensor Integration**: Laser scan, point cloud, and depth camera updates
@@ -71,7 +71,7 @@ double clearance = nav_map.getClearanceHeight(robot_pos);
 Every elevation level **MUST** have both layer types:
 
 ```
-Height Level    O_MAP Layer           C_MAP Layer
+Height Level    OCCUPANCY Layer           COST Layer
 -----------     -----------           -----------
 0.0 - 0.5m     Ground Obstacles  →   Ground Costs
 0.5 - 1.0m     Knee Height       →   Knee Costs  
@@ -79,12 +79,12 @@ Height Level    O_MAP Layer           C_MAP Layer
 1.5 - 2.5m     Overhead          →   Overhead Costs
 ```
 
-- **O_MAP** (Obstacle Map): Binary obstacle detection using PGM standard
+- **OCCUPANCY** (Obstacle Map): Binary obstacle detection using PGM standard
   - `0` = occupied/black (obstacle present)
   - `255` = free/white (clear space)
   - `128` = unknown/gray (unexplored)
 
-- **C_MAP** (Cost Map): Navigation cost for path planning
+- **COST** (Cost Map): Navigation cost for path planning
   - `0` = good travel/white (preferred path)
   - `255` = impossible/black (avoid completely)
   - `1-254` = increasing cost/gray (use with caution)
@@ -135,29 +135,29 @@ target_link_libraries(your_target gridmap::gridmap)
 
 ```cpp
 // Adding elevation level creates BOTH layers
-nav_map.addElevationLevel(1.0, 1.5, "robot_height");
+nav_map.add_elevation_level(1.0, 1.5, "robot_height");
 // → Creates: robot_height_omap AND robot_height_cmap
 
 // Adding obstacles updates BOTH layers  
-nav_map.addObstacle(obstacle_poly, 1.2, "conveyor");
-// → Updates O_MAP with obstacle, generates C_MAP costs
+nav_map.add_obstacle(obstacle_poly, 1.2, "conveyor");
+// → Updates OCCUPANCY with obstacle, generates COST costs
 
 // Validation ensures integrity
-bool is_valid = nav_map.validateDualLayerIntegrity();
-size_t layer_pairs = nav_map.getLayerPairCount(); // Always even number
+bool is_valid = nav_map.validate_dual_layer_integrity();
+size_t layer_pairs = nav_map.get_layer_pair_count(); // Always even number
 ```
 
 ### 2. Height-Based Navigation
 
 ```cpp
 // Query navigation at specific heights
-double obstacle_height = nav_map.getObstacleHeight({x, y, 0});
-double clearance = nav_map.getClearanceHeight({x, y, 0});
-bool traversable = nav_map.isTraversable({x, y, 0});
+double obstacle_height = nav_map.get_obstacle_height({x, y, 0});
+double clearance = nav_map.get_clearance_height({x, y, 0});
+bool traversable = nav_map.is_traversable({x, y, 0});
 
 // Layer-specific access
-auto ground_obstacles = nav_map.getObstacleMapAtHeight(0.25);  // O_MAP
-auto ground_costs = nav_map.getCostmapAtHeight(0.25);          // C_MAP
+auto ground_obstacles = nav_map.get_obstacle_map_at_height(0.25);  // OCCUPANCY
+auto ground_costs = nav_map.get_costmap_at_height(0.25);          // COST
 ```
 
 ### 3. Sensor Integration Workflow
@@ -167,11 +167,11 @@ auto ground_costs = nav_map.getCostmapAtHeight(0.25);          // C_MAP
 std::vector<concord::Point> laser_points = getLaserScan();
 concord::Pose robot_pose = getCurrentPose();
 
-// 2. Update O_MAP layers based on sensor data
-nav_map.updateFromLaserScan(laser_points, 0.3, robot_pose);
+// 2. Update OCCUPANCY layers based on sensor data
+nav_map.update_from_laser_scan(laser_points, 0.3, robot_pose);
 
-// 3. Generate C_MAP from updated O_MAP  
-auto costmap = nav_map.getCostmap(); // Automatically updated
+// 3. Generate COST from updated OCCUPANCY  
+auto costmap = nav_map.get_costmap(); // Automatically updated
 ```
 
 ## 📚 API Reference
@@ -199,32 +199,32 @@ gridmap::NavigationMap custom_map("name", "type", boundary, datum, resolution, m
 
 ```cpp
 // Add static obstacles
-nav_map.addObstacle(footprint_polygon, height, "obstacle_name");
+nav_map.add_obstacle(footprint_polygon, height, "obstacle_name");
 
 // Add semantic regions
-nav_map.addSemanticRegion(region_polygon, "region_name", "type", height_cm);
+nav_map.add_semantic_region(region_polygon, "region_name", "type", height_cm);
 
 // Agricultural-specific features
-nav_map.addObstacle(obstacle_polygon, obstacle_height, "obstacle_01");
-nav_map.addSemanticRegion(work_area, "work_zone", "workspace", 0, true);
+nav_map.add_obstacle(obstacle_polygon, obstacle_height, "obstacle_01");
+nav_map.add_semantic_region(work_area, "work_zone", "workspace", 0, true);
 ```
 
 ### Navigation Queries
 
 ```cpp
 // Point-based queries
-bool traversable = nav_map.isTraversable(point);
-double max_obstacle_height = nav_map.getObstacleHeight(point);  
-double clearance_height = nav_map.getClearanceHeight(point);
+bool traversable = nav_map.is_traversable(point);
+double max_obstacle_height = nav_map.get_obstacle_height(point);  
+double clearance_height = nav_map.get_clearance_height(point);
 
 // Map generation
-auto costmap_2d = nav_map.getCostmap();                    // Combined 2D costmap
-auto obstacles_at_height = nav_map.getObstacleMapAtHeight(1.0);  // O_MAP slice
-auto costs_at_height = nav_map.getCostmapAtHeight(1.0);          // C_MAP slice
+auto costmap_2d = nav_map.get_costmap();                    // Combined 2D costmap
+auto obstacles_at_height = nav_map.get_obstacle_map_at_height(1.0);  // OCCUPANCY slice
+auto costs_at_height = nav_map.get_costmap_at_height(1.0);          // COST slice
 
 // Composite views
-auto all_obstacles = nav_map.getCompositeObstacleView();   // Max projection O_MAP
-auto all_costs = nav_map.getCompositeCostView();           // Max projection C_MAP
+auto all_obstacles = nav_map.get_composite_obstacle_view();   // Max projection OCCUPANCY
+auto all_costs = nav_map.get_composite_cost_view();           // Max projection COST
 ```
 
 ### Sensor Updates
@@ -232,15 +232,15 @@ auto all_costs = nav_map.getCompositeCostView();           // Max projection C_M
 ```cpp
 // Laser scan (2D at known height)
 std::vector<concord::Point> scan_points;
-nav_map.updateFromLaserScan(scan_points, scan_height, robot_pose);
+nav_map.update_from_laser_scan(scan_points, scan_height, robot_pose);
 
 // Point cloud (3D)  
 std::vector<concord::Point> cloud_points;
-nav_map.updateFromPointCloud(cloud_points, sensor_pose);
+nav_map.update_from_point_cloud(cloud_points, sensor_pose);
 
 // Depth camera
 concord::Grid<float> depth_image;
-nav_map.updateFromDepthImage(depth_image, camera_pose);
+nav_map.update_from_depth_image(depth_image, camera_pose);
 ```
 
 ### File I/O
@@ -265,12 +265,12 @@ nav_map.toFiles("vector.geojson", "raster.tiff");  // Zoneout format
 auto nav_map = gridmap::NavigationMap("navigation_area", "robot_navigation", boundary, datum);
 
 // Add static obstacles
-nav_map.addObstacle(wall_polygon, 2.0, "wall_1");  // 2m wall height
-nav_map.addObstacle(barrier_polygon, 0.8, "barrier_1");  // 0.8m barrier height
+nav_map.add_obstacle(wall_polygon, 2.0, "wall_1");  // 2m wall height
+nav_map.add_obstacle(barrier_polygon, 0.8, "barrier_1");  // 0.8m barrier height
 
 // Add semantic regions
-nav_map.addSemanticRegion(work_area, "work_zone", "workspace", 0, true);
-nav_map.addSemanticRegion(storage_area, "storage_zone", "storage", 0, true);
+nav_map.add_semantic_region(work_area, "work_zone", "workspace", 0, true);
+nav_map.add_semantic_region(storage_area, "storage_zone", "storage", 0, true);
 ```
 
 ### Obstacle Integration
@@ -278,14 +278,14 @@ nav_map.addSemanticRegion(storage_area, "storage_zone", "storage", 0, true);
 ```cpp
 // Map static obstacles
 for (const auto& obstacle : static_obstacles) {
-    nav_map.addObstacle(obstacle.footprint, obstacle.height, obstacle.name);
+    nav_map.add_obstacle(obstacle.footprint, obstacle.height, obstacle.name);
 }
 
 // Add equipment obstacles
-nav_map.addObstacle(equipment_footprint, 2.5, "equipment_1", "static");
+nav_map.add_obstacle(equipment_footprint, 2.5, "equipment_1", "static");
 
 // Create navigation corridors (clear zones)
-nav_map.addSemanticRegion(corridor, "navigation_corridor", "preferred_path", 0);
+nav_map.add_semantic_region(corridor, "navigation_corridor", "preferred_path", 0);
 ```
 
 ## 📤 Export Formats
@@ -293,16 +293,16 @@ nav_map.addSemanticRegion(corridor, "navigation_corridor", "preferred_path", 0);
 ### PGM Export (Robotics Standard)
 
 ```cpp
-// Export O_MAP layers as PGM files for ROS/robotics tools
+// Export OCCUPANCY layers as PGM files for ROS/robotics tools
 gridmap::PgmExporter::PgmMetadata metadata("nav_map.pgm", 0.1);
 metadata.origin = {utm_x, utm_y, height};
 
 // Single layer export
 gridmap::PgmExporter::exportObstacleMapToPGM(
-    nav_map.getObstacleMapAtHeight(0.5), "ground_obstacles.pgm", metadata);
+    nav_map.get_obstacle_map_at_height(0.5), "ground_obstacles.pgm", metadata);
 
 // Multi-layer export
-auto heights = nav_map.getValidHeights();
+auto heights = nav_map.get_valid_heights();
 std::vector<std::string> names = {"ground", "knee", "robot", "overhead"};
 gridmap::PgmExporter::exportLayersToPGM(
     obstacle_layers, heights, names, "./export/", true, metadata);
@@ -312,7 +312,7 @@ gridmap::PgmExporter::exportLayersToPGM(
 
 ```cpp
 // Export 3D representation
-auto point_cloud = nav_map.toPointCloud();
+auto point_cloud = nav_map.to_point_cloud();
 // → std::vector<concord::Point> with obstacle points at correct heights
 ```
 
@@ -322,11 +322,11 @@ auto point_cloud = nav_map.toPointCloud();
 
 ```cpp
 // Convert to ROS occupancy grid
-auto obstacle_map = nav_map.getObstacleMapAtHeight(robot_height);
+auto obstacle_map = nav_map.get_obstacle_map_at_height(robot_height);
 nav_msgs::OccupancyGrid ros_map = convertToROSGrid(obstacle_map);
 
 // Convert to ROS costmap
-auto cost_map = nav_map.getCostmapAtHeight(robot_height);  
+auto cost_map = nav_map.get_costmap_at_height(robot_height);  
 costmap_2d::Costmap2D ros_costmap = convertToROSCostmap(cost_map);
 ```
 
@@ -334,12 +334,12 @@ costmap_2d::Costmap2D ros_costmap = convertToROSCostmap(cost_map);
 
 ```cpp
 // Get costmap for A* planning
-auto costmap = nav_map.getCostmap();
+auto costmap = nav_map.get_costmap();
 auto path = astar_planner.plan(start, goal, costmap);
 
 // Height-aware planning
 double robot_height = 1.2;
-auto height_costmap = nav_map.getCostmapAtHeight(robot_height);
+auto height_costmap = nav_map.get_costmap_at_height(robot_height);
 auto safe_path = planner.planWithClearance(start, goal, height_costmap, min_clearance);
 ```
 
@@ -365,7 +365,7 @@ make test ARGS="--verbose"  # Verbose output
 ```cpp
 // Benchmark layer operations
 auto start = std::chrono::high_resolution_clock::now();
-nav_map.updateFromPointCloud(large_cloud, pose);
+nav_map.update_from_point_cloud(large_cloud, pose);
 auto duration = std::chrono::high_resolution_clock::now() - start;
 ```
 

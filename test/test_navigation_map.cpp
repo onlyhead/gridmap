@@ -18,10 +18,10 @@ gridmap::NavigationMetadata createTestMetadata() {
     
     // Define minimal dual-layer system for testing
     metadata.layers = {
-        gridmap::ElevationLayer(0.0, 0.5, gridmap::LayerType::O_MAP, "ground_omap", true),
-        gridmap::ElevationLayer(0.0, 0.5, gridmap::LayerType::C_MAP, "ground_cmap", true),
-        gridmap::ElevationLayer(0.5, 1.0, gridmap::LayerType::O_MAP, "head_omap", true),
-        gridmap::ElevationLayer(0.5, 1.0, gridmap::LayerType::C_MAP, "head_cmap", true)
+        gridmap::ElevationLayer(0.0, 0.5, gridmap::LayerType::OCCUPANCY, "ground_omap", true),
+        gridmap::ElevationLayer(0.0, 0.5, gridmap::LayerType::COST, "ground_cmap", true),
+        gridmap::ElevationLayer(0.5, 1.0, gridmap::LayerType::OCCUPANCY, "head_omap", true),
+        gridmap::ElevationLayer(0.5, 1.0, gridmap::LayerType::COST, "head_cmap", true)
     };
     
     return metadata;
@@ -35,10 +35,10 @@ TEST_CASE("NavigationMap Construction") {
     SUBCASE("Basic construction") {
         gridmap::NavigationMap nav_map("test_map", "test_type", boundary, datum, 0.1, metadata);
         
-        CHECK(nav_map.getName() == "test_map");
-        CHECK(nav_map.getType() == "test_type");
-        CHECK(nav_map.getDatum().lat == doctest::Approx(52.0));
-        CHECK(nav_map.getDatum().lon == doctest::Approx(4.0));
+        CHECK(nav_map.get_name() == "test_map");
+        CHECK(nav_map.get_type() == "test_type");
+        CHECK(nav_map.get_datum().lat == doctest::Approx(52.0));
+        CHECK(nav_map.get_datum().lon == doctest::Approx(4.0));
     }
     
     SUBCASE("Construction with initial obstacles") {
@@ -55,21 +55,21 @@ TEST_CASE("NavigationMap Construction") {
         
         gridmap::NavigationMap nav_map("test_map", "test_type", boundary, datum, initial_obstacles, 0.1, metadata);
         
-        CHECK(nav_map.getName() == "test_map");
-        CHECK(nav_map.validateDualLayerIntegrity() == true);
+        CHECK(nav_map.get_name() == "test_map");
+        CHECK(nav_map.validate_dual_layer_integrity() == true);
         
         // Test that obstacles were added
-        CHECK(nav_map.getObstacleHeight({3, 3, 0}) >= 0); // Should detect first obstacle
-        CHECK(nav_map.getObstacleHeight({7, 7, 0}) >= 0); // Should detect second obstacle
+        CHECK(nav_map.get_obstacle_height({3, 3, 0}) >= 0); // Should detect first obstacle
+        CHECK(nav_map.get_obstacle_height({7, 7, 0}) >= 0); // Should detect second obstacle
     }
     
     SUBCASE("Dual-layer system validation") {
         gridmap::NavigationMap nav_map("test_map", "test_type", boundary, datum, 0.1, metadata);
         
-        CHECK(nav_map.validateDualLayerIntegrity() == true);
-        CHECK(nav_map.getLayerPairCount() >= 2); // At least ground + head level pairs
+        CHECK(nav_map.validate_dual_layer_integrity() == true);
+        CHECK(nav_map.get_layer_pair_count() >= 2); // At least ground + head level pairs
         
-        auto valid_heights = nav_map.getValidHeights();
+        auto valid_heights = nav_map.get_valid_heights();
         CHECK(valid_heights.size() >= 2);
     }
     
@@ -85,11 +85,11 @@ TEST_CASE("Obstacle and Semantic Features") {
     SUBCASE("Add obstacles from Polygon") {
         auto obstacle = createTestRectangle(5, 5, 2, 2);
         
-        CHECK_NOTHROW(nav_map.addObstacle(obstacle, 1.0, "test_obstacle"));
+        CHECK_NOTHROW(nav_map.add_obstacle(obstacle, 1.0, "test_obstacle"));
         
         // Test that obstacle affects multiple height levels
         concord::Point test_point{6, 6, 0}; // Center of obstacle
-        CHECK(nav_map.getObstacleHeight(test_point) >= 0); // Should return valid height (>=0)
+        CHECK(nav_map.get_obstacle_height(test_point) >= 0); // Should return valid height (>=0)
     }
     
     SUBCASE("Add obstacles from concord::Bound") {
@@ -100,17 +100,17 @@ TEST_CASE("Obstacle and Semantic Features") {
         concord::Size size{2.0, 1.0, 1.0};          // 2m x 1m x 1m
         concord::Bound bound{pose, size};
         
-        CHECK_NOTHROW(nav_map.addObstacle(bound, "bound_obstacle", "equipment"));
+        CHECK_NOTHROW(nav_map.add_obstacle(bound, "bound_obstacle", "equipment"));
         
         // Test that obstacle affects the area around the center
         concord::Point test_point{8, 8, 0}; // Center of obstacle
-        CHECK(nav_map.getObstacleHeight(test_point) >= 0); // Should detect obstacle
+        CHECK(nav_map.get_obstacle_height(test_point) >= 0); // Should detect obstacle
     }
     
     SUBCASE("Add semantic regions") {
         auto region = createTestRectangle(10, 10, 5, 5);
         
-        CHECK_NOTHROW(nav_map.addSemanticRegion(region, "test_region", "storage", 200, true));
+        CHECK_NOTHROW(nav_map.add_semantic_region(region, "test_region", "storage", 200, true));
     }
     
 }
@@ -126,29 +126,29 @@ TEST_CASE("Navigation Queries") {
         concord::Point test_point{5, 5, 0};
         
         // Before adding obstacles, point should be traversable
-        CHECK(nav_map.isTraversable(test_point) == true);
+        CHECK(nav_map.is_traversable(test_point) == true);
         
         // Add obstacle and test again
         auto obstacle = createTestRectangle(4, 4, 2, 2);
-        nav_map.addObstacle(obstacle, 1.5, "blocking_obstacle");
+        nav_map.add_obstacle(obstacle, 1.5, "blocking_obstacle");
         
-        CHECK(nav_map.getObstacleHeight(test_point) >= 0); // Should return valid height
-        CHECK(nav_map.getClearanceHeight(test_point) >= 0);
+        CHECK(nav_map.get_obstacle_height(test_point) >= 0); // Should return valid height
+        CHECK(nav_map.get_clearance_height(test_point) >= 0);
     }
     
     SUBCASE("Height-specific queries") {
         auto low_obstacle = createTestRectangle(2, 2, 1, 1);
         auto high_obstacle = createTestRectangle(7, 7, 1, 1);
         
-        nav_map.addObstacle(low_obstacle, 0.3, "low_obstacle");   // Ground level
-        nav_map.addObstacle(high_obstacle, 1.2, "high_obstacle"); // Head level
+        nav_map.add_obstacle(low_obstacle, 0.3, "low_obstacle");   // Ground level
+        nav_map.add_obstacle(high_obstacle, 1.2, "high_obstacle"); // Head level
         
         concord::Point low_point{2.5, 2.5, 0};
         concord::Point high_point{7.5, 7.5, 0};
         
         // Both should have valid heights (obstacles may or may not be detected depending on implementation)
-        CHECK(nav_map.getObstacleHeight(low_point) >= 0);
-        CHECK(nav_map.getObstacleHeight(high_point) >= 0);
+        CHECK(nav_map.get_obstacle_height(low_point) >= 0);
+        CHECK(nav_map.get_obstacle_height(high_point) >= 0);
     }
 }
 
@@ -160,27 +160,27 @@ TEST_CASE("Layer Management") {
     gridmap::NavigationMap nav_map("test_map", "test_type", boundary, datum, 0.1, metadata);
     
     SUBCASE("Add elevation levels") {
-        CHECK_NOTHROW(nav_map.addElevationLevel(1.0, 1.5, "test_level"));
+        CHECK_NOTHROW(nav_map.add_elevation_level(1.0, 1.5, "test_level"));
         
         // Should maintain dual-layer integrity
-        CHECK(nav_map.validateDualLayerIntegrity() == true);
+        CHECK(nav_map.validate_dual_layer_integrity() == true);
     }
     
     SUBCASE("Layer access") {
-        auto valid_heights = nav_map.getValidHeights();
+        auto valid_heights = nav_map.get_valid_heights();
         CHECK(valid_heights.size() >= 2);
         
         // Test accessing layers at different heights
         if (!valid_heights.empty()) {
             double test_height = valid_heights[0];
-            CHECK_NOTHROW(nav_map.getObstacleMapAtHeight(test_height));
-            CHECK_NOTHROW(nav_map.getCostmapAtHeight(test_height));
+            CHECK_NOTHROW(nav_map.get_obstacle_map_at_height(test_height));
+            CHECK_NOTHROW(nav_map.get_costmap_at_height(test_height));
         }
     }
     
     SUBCASE("Composite views") {
-        CHECK_NOTHROW(nav_map.getCompositeObstacleView());
-        CHECK_NOTHROW(nav_map.getCompositeCostView());
+        CHECK_NOTHROW(nav_map.get_composite_obstacle_view());
+        CHECK_NOTHROW(nav_map.get_composite_cost_view());
     }
 }
 
@@ -200,7 +200,7 @@ TEST_CASE("Sensor Updates") {
             {15, 10, 0}, {12, 8, 0}, {8, 12, 0}, {10, 15, 0}
         };
         
-        CHECK_NOTHROW(nav_map.updateFromLaserScan(scan_points, 0.3, robot_pose));
+        CHECK_NOTHROW(nav_map.update_from_laser_scan(scan_points, 0.3, robot_pose));
     }
     
     SUBCASE("Point cloud update") {
@@ -212,7 +212,7 @@ TEST_CASE("Sensor Updates") {
             {5, 5, 0.5}, {15, 15, 1.0}, {8, 12, 1.5}
         };
         
-        CHECK_NOTHROW(nav_map.updateFromPointCloud(cloud_points, sensor_pose));
+        CHECK_NOTHROW(nav_map.update_from_point_cloud(cloud_points, sensor_pose));
     }
 }
 
@@ -226,7 +226,7 @@ TEST_CASE("File I/O Operations") {
     SUBCASE("Save and load operations") {
         // Add some content to make the map interesting
         auto obstacle = createTestRectangle(3, 3, 2, 2);
-        nav_map.addObstacle(obstacle, 1.0, "test_obstacle");
+        nav_map.add_obstacle(obstacle, 1.0, "test_obstacle");
         
         std::filesystem::path temp_dir = "./test_output";
         
@@ -234,7 +234,7 @@ TEST_CASE("File I/O Operations") {
         CHECK(std::filesystem::exists(temp_dir));
         
         // Test GeoJSON/GeoTIFF export
-        CHECK_NOTHROW(nav_map.toFiles(temp_dir / "test.geojson", temp_dir / "test.tiff"));
+        CHECK_NOTHROW(nav_map.to_files(temp_dir / "test.geojson", temp_dir / "test.tiff"));
         
         // Clean up
         std::filesystem::remove_all(temp_dir);
@@ -251,19 +251,19 @@ TEST_CASE("Map Utilities") {
     SUBCASE("Clear operations") {
         // Add some dynamic content
         auto obstacle = createTestRectangle(3, 3, 2, 2);
-        nav_map.addObstacle(obstacle, 1.0, "dynamic_obstacle");
+        nav_map.add_obstacle(obstacle, 1.0, "dynamic_obstacle");
         
-        CHECK_NOTHROW(nav_map.clearDynamicLayers());
+        CHECK_NOTHROW(nav_map.clear_dynamic_layers());
     }
     
     SUBCASE("Reset operations") {
-        auto valid_heights = nav_map.getValidHeights();
+        auto valid_heights = nav_map.get_valid_heights();
         if (!valid_heights.empty()) {
-            CHECK_NOTHROW(nav_map.resetElevationLevel(valid_heights[0]));
+            CHECK_NOTHROW(nav_map.reset_elevation_level(valid_heights[0]));
         }
     }
     
     SUBCASE("3D point cloud export") {
-        CHECK_NOTHROW(nav_map.toPointCloud());
+        CHECK_NOTHROW(nav_map.to_point_cloud());
     }
 }

@@ -4,7 +4,7 @@
 // Built on top of the Zoneout ecosystem for agricultural and indoor robot navigation
 // 
 // Core Features:
-// - Mandatory dual-layer system (O_MAP + C_MAP at each height level)
+// - Mandatory dual-layer system (OCCUPANCY + COST at each height level)
 // - Multi-layered 2.5D navigation maps
 // - WGS84/ENU coordinate handling via concord::Datum
 // - PGM standard compliance for occupancy maps
@@ -70,16 +70,16 @@ inline NavigationMap createBarnNavigationMap(
     
     // Set up barn-optimized layers
     metadata.layers = {
-        ElevationLayer(0.0, 0.5, LayerType::O_MAP, "ground_omap", true),
-        ElevationLayer(0.0, 0.5, LayerType::C_MAP, "ground_cmap", true),
-        ElevationLayer(0.5, 1.0, LayerType::O_MAP, "knee_height_omap", true),
-        ElevationLayer(0.5, 1.0, LayerType::C_MAP, "knee_height_cmap", true),
-        ElevationLayer(1.0, 1.5, LayerType::O_MAP, "robot_height_omap", true),
-        ElevationLayer(1.0, 1.5, LayerType::C_MAP, "robot_height_cmap", true),
-        ElevationLayer(1.5, 2.5, LayerType::O_MAP, "overhead_omap", true),
-        ElevationLayer(1.5, 2.5, LayerType::C_MAP, "overhead_cmap", true),
-        ElevationLayer(2.5, 5.0, LayerType::O_MAP, "ceiling_omap", false),
-        ElevationLayer(2.5, 5.0, LayerType::C_MAP, "ceiling_cmap", false)
+        ElevationLayer(0.0, 0.5, LayerType::OCCUPANCY, "ground_omap", true),
+        ElevationLayer(0.0, 0.5, LayerType::COST, "ground_cmap", true),
+        ElevationLayer(0.5, 1.0, LayerType::OCCUPANCY, "knee_height_omap", true),
+        ElevationLayer(0.5, 1.0, LayerType::COST, "knee_height_cmap", true),
+        ElevationLayer(1.0, 1.5, LayerType::OCCUPANCY, "robot_height_omap", true),
+        ElevationLayer(1.0, 1.5, LayerType::COST, "robot_height_cmap", true),
+        ElevationLayer(1.5, 2.5, LayerType::OCCUPANCY, "overhead_omap", true),
+        ElevationLayer(1.5, 2.5, LayerType::COST, "overhead_cmap", true),
+        ElevationLayer(2.5, 5.0, LayerType::OCCUPANCY, "ceiling_omap", false),
+        ElevationLayer(2.5, 5.0, LayerType::COST, "ceiling_cmap", false)
     };
     
     return NavigationMap(name, "barn_navigation", barn_boundary, datum, resolution, metadata);
@@ -100,22 +100,22 @@ inline NavigationMap createWarehouseNavigationMap(
     
     // Set up warehouse-optimized layers  
     metadata.layers = {
-        ElevationLayer(0.0, 0.3, LayerType::O_MAP, "floor_omap", true),
-        ElevationLayer(0.0, 0.3, LayerType::C_MAP, "floor_cmap", true),
-        ElevationLayer(0.3, 1.0, LayerType::O_MAP, "low_shelf_omap", true),
-        ElevationLayer(0.3, 1.0, LayerType::C_MAP, "low_shelf_cmap", true),
-        ElevationLayer(1.0, 2.0, LayerType::O_MAP, "mid_shelf_omap", true),
-        ElevationLayer(1.0, 2.0, LayerType::C_MAP, "mid_shelf_cmap", true),
-        ElevationLayer(2.0, 3.0, LayerType::O_MAP, "high_shelf_omap", true),
-        ElevationLayer(2.0, 3.0, LayerType::C_MAP, "high_shelf_cmap", true),
-        ElevationLayer(3.0, 10.0, LayerType::O_MAP, "ceiling_omap", false),
-        ElevationLayer(3.0, 10.0, LayerType::C_MAP, "ceiling_cmap", false)
+        ElevationLayer(0.0, 0.3, LayerType::OCCUPANCY, "floor_omap", true),
+        ElevationLayer(0.0, 0.3, LayerType::COST, "floor_cmap", true),
+        ElevationLayer(0.3, 1.0, LayerType::OCCUPANCY, "low_shelf_omap", true),
+        ElevationLayer(0.3, 1.0, LayerType::COST, "low_shelf_cmap", true),
+        ElevationLayer(1.0, 2.0, LayerType::OCCUPANCY, "mid_shelf_omap", true),
+        ElevationLayer(1.0, 2.0, LayerType::COST, "mid_shelf_cmap", true),
+        ElevationLayer(2.0, 3.0, LayerType::OCCUPANCY, "high_shelf_omap", true),
+        ElevationLayer(2.0, 3.0, LayerType::COST, "high_shelf_cmap", true),
+        ElevationLayer(3.0, 10.0, LayerType::OCCUPANCY, "ceiling_omap", false),
+        ElevationLayer(3.0, 10.0, LayerType::COST, "ceiling_cmap", false)
     };
     
     return NavigationMap(name, "warehouse_navigation", warehouse_boundary, datum, resolution, metadata);
 }
 
-// Quick PGM export for both O_MAP and C_MAP layers
+// Quick PGM export for both OCCUPANCY and COST layers
 inline void exportNavigationMapToPGM(const NavigationMap& nav_map,
                                      const std::filesystem::path& output_directory,
                                      bool export_all_layers = false) {
@@ -124,14 +124,14 @@ inline void exportNavigationMapToPGM(const NavigationMap& nav_map,
     
     if (export_all_layers) {
         // Export all individual layers
-        auto heights = nav_map.getValidHeights();
+        auto heights = nav_map.get_valid_heights();
         std::vector<concord::Grid<uint8_t>> omap_layers, cmap_layers;
         std::vector<std::string> omap_names, cmap_names;
         
         for (double height : heights) {
             // Get layers for this height
-            auto omap_layer = nav_map.getObstacleMapAtHeight(height);
-            auto cmap_layer = nav_map.getCostmapAtHeight(height);
+            auto omap_layer = nav_map.get_obstacle_map_at_height(height);
+            auto cmap_layer = nav_map.get_costmap_at_height(height);
             
             omap_layers.push_back(omap_layer);
             cmap_layers.push_back(cmap_layer);
@@ -140,18 +140,18 @@ inline void exportNavigationMapToPGM(const NavigationMap& nav_map,
             cmap_names.push_back("cmap");
         }
         
-        // Export O_MAP layers
+        // Export OCCUPANCY layers
         PgmExporter::exportLayersToPGM(omap_layers, heights, omap_names,
                                        output_directory / "obstacle_maps", true);
         
-        // Export C_MAP layers  
+        // Export COST layers  
         PgmExporter::exportLayersToPGM(cmap_layers, heights, cmap_names,
                                        output_directory / "cost_maps", false);
     }
     
     // Always export composite maps
-    auto composite_omap = nav_map.getCompositeObstacleView();
-    auto composite_cmap = nav_map.getCompositeCostView();
+    auto composite_omap = nav_map.get_composite_obstacle_view();
+    auto composite_cmap = nav_map.get_composite_cost_view();
     
     PgmExporter::exportObstacleMapToPGM(composite_omap, 
                                         output_directory / "composite_obstacle_map.pgm");

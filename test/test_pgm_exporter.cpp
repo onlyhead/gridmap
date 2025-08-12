@@ -38,7 +38,7 @@ TEST_CASE("PgmExporter Basic Functionality") {
     }
 }
 
-TEST_CASE("PgmExporter O_MAP Export") {
+TEST_CASE("PgmExporter OCCUPANCY Export") {
     auto test_grid = createTestGrid(20, 30, 0.1);
     std::filesystem::path temp_dir = "./test_pgm_output";
     std::filesystem::create_directories(temp_dir);
@@ -110,11 +110,11 @@ TEST_CASE("PgmExporter O_MAP Export") {
     std::filesystem::remove_all(temp_dir);
 }
 
-TEST_CASE("PgmExporter C_MAP Export") {
-    // Create a C_MAP test grid (inverted values from O_MAP)
+TEST_CASE("PgmExporter COST Export") {
+    // Create a COST test grid (inverted values from OCCUPANCY)
     auto cmap_grid = createTestGrid(15, 25, 0.1);
     
-    // Invert values to simulate C_MAP (0=good, 255=bad)
+    // Invert values to simulate COST (0=good, 255=bad)
     for (size_t r = 0; r < cmap_grid.rows(); ++r) {
         for (size_t c = 0; c < cmap_grid.cols(); ++c) {
             uint8_t val = cmap_grid(r, c);
@@ -125,7 +125,7 @@ TEST_CASE("PgmExporter C_MAP Export") {
     std::filesystem::path temp_dir = "./test_cmap_output";
     std::filesystem::create_directories(temp_dir);
     
-    SUBCASE("C_MAP to PGM conversion") {
+    SUBCASE("COST to PGM conversion") {
         auto pgm_path = temp_dir / "test_cmap.pgm";
         gridmap::PgmExporter::PgmMetadata metadata("test_cmap.pgm", 0.1);
         

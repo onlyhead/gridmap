@@ -40,11 +40,10 @@ namespace zoneout {
 namespace gridmap {
 
     enum class LayerType {
-        O_MAP,     // Obstacle Map - 3 discrete values (0=occupied/black, 255=free/white, 128=unknown/gray)
-        C_MAP,     // Cost Map - continuous 0-255 (0=good_travel/white, 255=impossible/black)
+        OCCUPANCY, // Obstacle Map - 3 discrete values (0=occupied/black, 255=free/white, 128=unknown/gray)
+        COST,      // Cost Map - continuous 0-255 (0=good_travel/white, 255=impossible/black)
         ELEVATION, // Height map for terrain analysis
         SEMANTIC,  // Object classifications and regions
-        DYNAMIC    // Temporary/moving obstacles
     };
 
     struct ElevationLayer {
@@ -64,7 +63,7 @@ namespace gridmap {
         double max_traversable_step;        // Maximum step height robot can handle
         double max_traversable_slope;       // Maximum slope angle (degrees)
         double inflation_radius;            // Obstacle inflation radius for safety margins
-        std::vector<ElevationLayer> layers; // Layer configuration - MUST have paired O_MAP+C_MAP
+        std::vector<ElevationLayer> layers; // Layer configuration - MUST have paired OCCUPANCY+COST
 
         NavigationMetadata() {
             robot_height = 1.0;
@@ -91,29 +90,29 @@ namespace gridmap {
         concord::Pose grid_origin_;         // Grid origin pose
         size_t grid_rows_, grid_cols_;      // Grid dimensions
 
-        // Dual-layer tracking - ensures MANDATORY O_MAP+C_MAP pairs at each height
-        std::unordered_map<double, size_t> omap_indices_; // height -> O_MAP layer index in grid_data_
-        std::unordered_map<double, size_t> cmap_indices_; // height -> C_MAP layer index in grid_data_
+        // Dual-layer tracking - ensures MANDATORY OCCUPANCY+COST pairs at each height
+        std::unordered_map<double, size_t> omap_indices_; // height -> OCCUPANCY layer index in grid_data_
+        std::unordered_map<double, size_t> cmap_indices_; // height -> COST layer index in grid_data_
 
         // Costmap cache for path planning
         mutable concord::Grid<uint8_t> costmap_cache_;
         mutable bool costmap_dirty_;
 
         // Validate dual-layer system integrity
-        inline void validateDualLayers() const {
-            if (!validateDualLayerIntegrity()) {
+        inline void validate_dual_layers() const {
+            if (!validate_dual_layer_integrity()) {
                 throw std::runtime_error("Dual-layer system integrity violated");
             }
         }
 
         // Internal helper to add layer pairs
-        inline void addLayerPair(double height_min, double height_max, const std::string &base_name) {
+        inline void add_layer_pair(double height_min, double height_max, const std::string &base_name) {
             // This is now handled by addElevationLevel
-            addElevationLevel(height_min, height_max, base_name);
+            add_elevation_level(height_min, height_max, base_name);
         }
 
         // Initialize grid dimensions from boundary polygon and resolution
-        inline void initializeGridDimensions() {
+        inline void initialize_grid_dimensions() {
             // Calculate bounding box from polygon points manually
             auto points = boundary_polygon_.getPoints();
             if (points.empty()) {
@@ -143,21 +142,21 @@ namespace gridmap {
         }
 
         // Initialize layers from metadata
-        inline void initializeLayersFromMetadata() {
+        inline void initialize_layers_from_metadata() {
             if (nav_metadata_.layers.empty()) {
                 // Default: add basic ground level layer
-                addElevationLevel(0.0, 1.0, "ground");
+                add_elevation_level(0.0, 1.0, "ground");
                 return;
             }
 
-            // Process layers from metadata in O_MAP/C_MAP pairs
+            // Process layers from metadata in OCCUPANCY/COST pairs
             std::map<std::pair<double, double>, std::string> layer_pairs;
 
-            // Group O_MAP and C_MAP layers by their height ranges
+            // Group OCCUPANCY and COST layers by their height ranges
             for (const auto &layer : nav_metadata_.layers) {
                 if (layer.active) {
                     auto height_range = std::make_pair(layer.height_min, layer.height_max);
-                    if (layer.type == LayerType::O_MAP || layer.type == LayerType::C_MAP) {
+                    if (layer.type == LayerType::OCCUPANCY || layer.type == LayerType::COST) {
                         // Extract base name (remove "_omap" or "_cmap" suffix)
                         std::string base_name = layer.name;
                         size_t suffix_pos = base_name.find("_omap");
@@ -174,7 +173,7 @@ namespace gridmap {
 
             // Add dual layers for each unique height range
             for (const auto &[height_range, base_name] : layer_pairs) {
-                addElevationLevel(height_range.first, height_range.second, base_name);
+                add_elevation_level(height_range.first, height_range.second, base_name);
             }
         }
 
@@ -186,8 +185,8 @@ namespace gridmap {
                       const NavigationMetadata &metadata = NavigationMetadata{})
             : base_zone_(name, type, boundary, datum, resolution), nav_metadata_(metadata), boundary_polygon_(boundary),
               grid_resolution_(resolution), costmap_dirty_(true) {
-            initializeGridDimensions();
-            initializeLayersFromMetadata();
+            initialize_grid_dimensions();
+            initialize_layers_from_metadata();
         }
 
         // Constructor with initial obstacles as concord::Bound (oriented bounding boxes)
@@ -196,48 +195,48 @@ namespace gridmap {
                       double resolution = 0.1, const NavigationMetadata &metadata = NavigationMetadata{})
             : base_zone_(name, type, boundary, datum, resolution), nav_metadata_(metadata), boundary_polygon_(boundary),
               grid_resolution_(resolution), costmap_dirty_(true) {
-            initializeGridDimensions();
-            initializeLayersFromMetadata();
+            initialize_grid_dimensions();
+            initialize_layers_from_metadata();
 
             // Add all initial obstacles
             for (size_t i = 0; i < initial_obstacles.size(); ++i) {
                 const auto &obstacle = initial_obstacles[i];
                 std::string obstacle_name = "obstacle_" + std::to_string(i + 1);
-                addObstacle(obstacle, obstacle_name);
+                add_obstacle(obstacle, obstacle_name);
             }
         }
 
         // Create from existing Zone and extend with navigation features
         explicit NavigationMap(const zoneout::Zone &zone, const NavigationMetadata &metadata = NavigationMetadata{})
             : base_zone_(zone), nav_metadata_(metadata), costmap_dirty_(true) {
-            initializeLayersFromMetadata();
+            initialize_layers_from_metadata();
         }
 
         // ========== zoneout Zone Access ==========
         // Get underlying zone for advanced operations (like zoneout examples)
-        const zoneout::Zone &getZone() const { return base_zone_; }
-        zoneout::Zone &getZone() { return base_zone_; }
+        const zoneout::Zone &get_zone() const { return base_zone_; }
+        zoneout::Zone &get_zone() { return base_zone_; }
 
         // Standard zone properties following zoneout pattern
-        const std::string &getName() const { return base_zone_.getName(); }
-        const std::string &getType() const { return base_zone_.getType(); }
-        const concord::Datum &getDatum() const { return base_zone_.getDatum(); }
+        const std::string &get_name() const { return base_zone_.getName(); }
+        const std::string &get_type() const { return base_zone_.getType(); }
+        const concord::Datum &get_datum() const { return base_zone_.getDatum(); }
 
         // ========== Mandatory Dual-Layer Management ==========
-        // Add BOTH O_MAP and C_MAP layers at specific height (enforces dual-layer system)
-        inline void addElevationLevel(double height_min, double height_max, const std::string &name = "") {
+        // Add BOTH OCCUPANCY and COST layers at specific height (enforces dual-layer system)
+        inline void add_elevation_level(double height_min, double height_max, const std::string &name = "") {
             double height = (height_min + height_max) / 2.0;
 
             // Add height to sorted list if not already present
-            LayerManager::addLayerHeight(layer_heights_, height);
+            LayerManager::add_layer_height(layer_heights_, height);
 
             // Create grid using template dimensions - ALL layers have identical dimensions
             concord::Grid<uint8_t> template_grid(grid_rows_, grid_cols_, grid_resolution_, true, grid_origin_);
 
-            // Add O_MAP layer (initialized to free=255)
+            // Add OCCUPANCY layer (initialized to free=255)
             size_t omap_index = grid_data_.size();
             grid_data_.push_back(template_grid);
-            // Initialize O_MAP to all free (255)
+            // Initialize OCCUPANCY to all free (255)
             for (size_t r = 0; r < grid_data_[omap_index].rows(); ++r) {
                 for (size_t c = 0; c < grid_data_[omap_index].cols(); ++c) {
                     grid_data_[omap_index].set_value(r, c, 255); // free space
@@ -245,10 +244,10 @@ namespace gridmap {
             }
             omap_indices_[height] = omap_index;
 
-            // Add C_MAP layer (initialized to good_travel=0)
+            // Add COST layer (initialized to good_travel=0)
             size_t cmap_index = grid_data_.size();
             grid_data_.push_back(template_grid);
-            // Initialize C_MAP to all good travel (0)
+            // Initialize COST to all good travel (0)
             for (size_t r = 0; r < grid_data_[cmap_index].rows(); ++r) {
                 for (size_t c = 0; c < grid_data_[cmap_index].cols(); ++c) {
                     grid_data_[cmap_index].set_value(r, c, 0); // good travel
@@ -259,9 +258,9 @@ namespace gridmap {
             costmap_dirty_ = true;
         }
 
-        // Update O_MAP (obstacle detection) at specific position and height
-        inline void updateObstacleMap(const concord::Point &position, double height,
-                                      uint8_t occupancy_value) { // 0=occupied, 255=free, 128=unknown
+        // Update OCCUPANCY (obstacle detection) at specific position and height
+        inline void update_obstacle_map(const concord::Point &position, double height,
+                                        uint8_t occupancy_value) { // 0=occupied, 255=free, 128=unknown
             auto it = omap_indices_.find(height);
             if (it != omap_indices_.end() && it->second < grid_data_.size()) {
                 try {
@@ -276,9 +275,9 @@ namespace gridmap {
             }
         }
 
-        // Update C_MAP (navigation cost) at specific position and height
-        inline void updateCostMap(const concord::Point &position, double height,
-                                  uint8_t cost_value) { // 0=good_travel, 255=impossible
+        // Update COST (navigation cost) at specific position and height
+        inline void update_cost_map(const concord::Point &position, double height,
+                                    uint8_t cost_value) { // 0=good_travel, 255=impossible
             auto it = cmap_indices_.find(height);
             if (it != cmap_indices_.end() && it->second < grid_data_.size()) {
                 try {
@@ -293,8 +292,8 @@ namespace gridmap {
             }
         }
 
-        // Get O_MAP value at 3D position (PGM standard: 0=occupied, 255=free)
-        inline uint8_t getObstacleValue(const concord::Point &position, double height) const {
+        // Get OCCUPANCY value at 3D position (PGM standard: 0=occupied, 255=free)
+        inline uint8_t get_obstacle_value(const concord::Point &position, double height) const {
             auto it = omap_indices_.find(height);
             if (it != omap_indices_.end() && it->second < grid_data_.size()) {
                 try {
@@ -309,8 +308,8 @@ namespace gridmap {
             return 128; // unknown if height not found
         }
 
-        // Get C_MAP value at 3D position (Navigation: 0=good, 255=bad)
-        inline uint8_t getCostValue(const concord::Point &position, double height) const {
+        // Get COST value at 3D position (Navigation: 0=good, 255=bad)
+        inline uint8_t get_cost_value(const concord::Point &position, double height) const {
             auto it = cmap_indices_.find(height);
             if (it != cmap_indices_.end() && it->second < grid_data_.size()) {
                 try {
@@ -326,17 +325,17 @@ namespace gridmap {
         }
 
         // ========== Height Queries ==========
-        // Check if position is traversable at ground level using C_MAP
-        inline bool isTraversable(const concord::Point &position) const {
+        // Check if position is traversable at ground level using COST
+        inline bool is_traversable(const concord::Point &position) const {
             if (layer_heights_.empty())
                 return false;
             double ground_height = layer_heights_[0];
-            uint8_t cost = getCostValue(position, ground_height);
+            uint8_t cost = get_cost_value(position, ground_height);
             return cost < 128; // Traversable if cost is less than halfway point
         }
 
-        // Get maximum obstacle height at position from O_MAP layers
-        inline double getObstacleHeight(const concord::Point &position) const {
+        // Get maximum obstacle height at position from OCCUPANCY layers
+        inline double get_obstacle_height(const concord::Point &position) const {
             double max_obstacle_height = 0.0;
             bool found_obstacle = false;
 
@@ -362,7 +361,7 @@ namespace gridmap {
         }
 
         // Get clear height (space between ground and first obstacle)
-        inline double getClearanceHeight(const concord::Point &position) const {
+        inline double get_clearance_height(const concord::Point &position) const {
             if (layer_heights_.empty())
                 return 0.0;
 
@@ -389,19 +388,20 @@ namespace gridmap {
 
         // ========== Semantic Features (using zoneout::Poly infrastructure) ==========
         // Add named region (e.g., "feeding_area", "storage") with GeoJSON-style properties
-        inline void addSemanticRegion(const concord::Polygon &region, const std::string &name, const std::string &type,
-                                      double height_cm = 0,    // Height in centimeters (GeoJSON standard)
-                                      bool is_static = true) { // Static vs dynamic element
+        inline void add_semantic_region(const concord::Polygon &region, const std::string &name,
+                                        const std::string &type,
+                                        double height_cm = 0,    // Height in centimeters (GeoJSON standard)
+                                        bool is_static = true) { // Static vs dynamic element
             // Convert height from cm to meters
             double height_m = height_cm / 100.0;
 
             // Find appropriate layer or create one
             if (omap_indices_.empty() || omap_indices_.find(height_m) == omap_indices_.end()) {
-                addElevationLevel(height_m, height_m + 0.5, name);
+                add_elevation_level(height_m, height_m + 0.5, name);
             }
 
-            // Update both O_MAP and C_MAP for this region
-            // For semantic regions, mark as free in O_MAP but add cost in C_MAP based on type
+            // Update both OCCUPANCY and COST for this region
+            // For semantic regions, mark as free in OCCUPANCY but add cost in COST based on type
             uint8_t cost_value = 25; // Default semantic cost
 
             // Placeholder implementation - would need actual polygon rasterization
@@ -410,8 +410,8 @@ namespace gridmap {
         }
 
         // Add obstacle from concord::Bound (oriented bounding box with pose + size)
-        inline void addObstacle(const concord::Bound &obstacle_bound, const std::string &name = "",
-                                const std::string &type = "obstacle") {
+        inline void add_obstacle(const concord::Bound &obstacle_bound, const std::string &name = "",
+                                 const std::string &type = "obstacle") {
             // Extract height from the obstacle bound size (Z dimension)
             double height = obstacle_bound.size.z;
 
@@ -441,12 +441,12 @@ namespace gridmap {
             concord::Polygon footprint(footprint_points);
 
             // Add the obstacle using existing polygon-based method
-            addObstacle(footprint, height, name, type);
+            add_obstacle(footprint, height, name, type);
         }
 
-        // Add obstacle with height information - updates BOTH O_MAP and C_MAP in ALL affected layers
-        inline void addObstacle(const concord::Polygon &footprint, double height, const std::string &name = "",
-                                const std::string &type = "obstacle") {
+        // Add obstacle with height information - updates BOTH OCCUPANCY and COST in ALL affected layers
+        inline void add_obstacle(const concord::Polygon &footprint, double height, const std::string &name = "",
+                                 const std::string &type = "obstacle") {
             // Find ALL layers that this obstacle should appear in (from ground up to obstacle height)
             std::vector<double> affected_layers;
 
@@ -463,7 +463,7 @@ namespace gridmap {
             // If no existing layers cover this height, we need to ensure we have appropriate layers
             if (affected_layers.empty()) {
                 // Create a layer that can contain this height
-                addElevationLevel(0.0, height + 0.1, name.empty() ? "obstacle" : name);
+                add_elevation_level(0.0, height + 0.1, name.empty() ? "obstacle" : name);
                 // Re-scan for affected layers
                 for (const auto &[layer_height, _] : omap_indices_) {
                     if (layer_height <= height) {
@@ -485,7 +485,7 @@ namespace gridmap {
                         // Get cells within polygon footprint
                         auto indices = grid_data_[omap_it->second].indices_within(footprint);
 
-                        // Mark as occupied in O_MAP and impossible in C_MAP
+                        // Mark as occupied in OCCUPANCY and impossible in COST
                         for (size_t idx : indices) {
                             size_t row = idx / grid_data_[omap_it->second].cols();
                             size_t col = idx % grid_data_[omap_it->second].cols();
@@ -569,17 +569,17 @@ namespace gridmap {
         }
 
         // ========== Costmap Generation from Dual Layers ==========
-        // Generate 2D costmap for path planning (combines all C_MAP layers)
-        inline const concord::Grid<uint8_t> &getCostmap() const {
+        // Generate 2D costmap for path planning (combines all COST layers)
+        inline const concord::Grid<uint8_t> &get_costmap() const {
             if (costmap_dirty_ || costmap_cache_.rows() == 0) {
-                // Rebuild costmap from all C_MAP layers
+                // Rebuild costmap from all COST layers
                 if (!cmap_indices_.empty()) {
-                    // Use first C_MAP as base
+                    // Use first COST as base
                     size_t base_index = cmap_indices_.begin()->second;
                     if (base_index < grid_data_.size()) {
                         costmap_cache_ = grid_data_[base_index];
 
-                        // Combine with other C_MAP layers (take maximum cost)
+                        // Combine with other COST layers (take maximum cost)
                         for (const auto &[height, index] : cmap_indices_) {
                             if (index < grid_data_.size() && index != base_index) {
                                 for (size_t i = 0; i < costmap_cache_.rows() * costmap_cache_.cols(); ++i) {
@@ -599,8 +599,8 @@ namespace gridmap {
             return costmap_cache_;
         }
 
-        // Generate costmap for specific height slice (uses C_MAP at that height)
-        inline concord::Grid<uint8_t> getCostmapAtHeight(double height) const {
+        // Generate costmap for specific height slice (uses COST at that height)
+        inline concord::Grid<uint8_t> get_costmap_at_height(double height) const {
             auto it = cmap_indices_.find(height);
             if (it != cmap_indices_.end() && it->second < grid_data_.size()) {
                 return grid_data_[it->second];
@@ -612,8 +612,8 @@ namespace gridmap {
             return concord::Grid<uint8_t>(1, 1, 0.1, true, pose);
         }
 
-        // Generate obstacle map for export (uses O_MAP at that height)
-        inline concord::Grid<uint8_t> getObstacleMapAtHeight(double height) const {
+        // Generate obstacle map for export (uses OCCUPANCY at that height)
+        inline concord::Grid<uint8_t> get_obstacle_map_at_height(double height) const {
             auto it = omap_indices_.find(height);
             if (it != omap_indices_.end() && it->second < grid_data_.size()) {
                 return grid_data_[it->second];
@@ -625,13 +625,13 @@ namespace gridmap {
             return concord::Grid<uint8_t>(1, 1, 0.1, true, pose);
         }
 
-        // ========== Sensor Updates (Updates O_MAP, then generates C_MAP) ==========
+        // ========== Sensor Updates (Updates OCCUPANCY, then generates COST) ==========
         // Update from 2D laser scan at known height
-        inline void updateFromLaserScan(const std::vector<concord::Point> &points, double scan_height,
-                                        const concord::Pose &robot_pose) {
+        inline void update_from_laser_scan(const std::vector<concord::Point> &points, double scan_height,
+                                           const concord::Pose &robot_pose) {
             // Ensure we have a layer for this height
             if (omap_indices_.find(scan_height) == omap_indices_.end()) {
-                addElevationLevel(scan_height, scan_height + 0.1, "laser_scan");
+                add_elevation_level(scan_height, scan_height + 0.1, "laser_scan");
             }
 
             auto omap_it = omap_indices_.find(scan_height);
@@ -642,7 +642,7 @@ namespace gridmap {
 
                 // Update obstacle map with scan points
                 for (const auto &point : points) {
-                    // Mark obstacle points as occupied in O_MAP
+                    // Mark obstacle points as occupied in OCCUPANCY
                     try {
                         auto [row1, col1] = grid_data_[omap_it->second].world_to_grid(point);
                         if (row1 < grid_data_[omap_it->second].rows() && col1 < grid_data_[omap_it->second].cols()) {
@@ -651,7 +651,7 @@ namespace gridmap {
                     } catch (const std::exception &) {
                     }
 
-                    // Add cost around obstacles in C_MAP (inflation)
+                    // Add cost around obstacles in COST (inflation)
                     try {
                         auto [row2, col2] = grid_data_[cmap_it->second].world_to_grid(point);
                         if (row2 < grid_data_[cmap_it->second].rows() && col2 < grid_data_[cmap_it->second].cols()) {
@@ -667,30 +667,31 @@ namespace gridmap {
         }
 
         // Update from 3D point cloud
-        inline void updateFromPointCloud(const std::vector<concord::Point> &points, const concord::Pose &sensor_pose) {
+        inline void update_from_point_cloud(const std::vector<concord::Point> &points,
+                                            const concord::Pose &sensor_pose) {
             for (const auto &point : points) {
                 double height = point.z;
 
                 // Find appropriate layer for this point's height
-                size_t layer_index = LayerManager::getLayerIndex(height, layer_heights_);
+                size_t layer_index = LayerManager::get_layer_index(height, layer_heights_);
                 if (layer_index < layer_heights_.size()) {
                     double layer_height = layer_heights_[layer_index];
 
                     // Ensure layers exist for this height
                     if (omap_indices_.find(layer_height) == omap_indices_.end()) {
-                        addElevationLevel(layer_height, layer_height + 0.1, "pointcloud");
+                        add_elevation_level(layer_height, layer_height + 0.1, "pointcloud");
                     }
 
-                    // Update both O_MAP and C_MAP
-                    updateObstacleMap(point, layer_height, 0); // occupied
-                    updateCostMap(point, layer_height, 255);   // impossible
+                    // Update both OCCUPANCY and COST
+                    update_obstacle_map(point, layer_height, 0); // occupied
+                    update_cost_map(point, layer_height, 255);   // impossible
                 }
             }
             costmap_dirty_ = true;
         }
 
         // Update from depth camera
-        inline void updateFromDepthImage(const concord::Grid<float> &depth_image, const concord::Pose &camera_pose) {
+        inline void update_from_depth_image(const concord::Grid<float> &depth_image, const concord::Pose &camera_pose) {
             // Placeholder implementation - would need full camera projection
             // For demonstration, treat as simplified point cloud
             std::vector<concord::Point> points;
@@ -709,24 +710,24 @@ namespace gridmap {
                 }
             }
 
-            updateFromPointCloud(points, camera_pose);
+            update_from_point_cloud(points, camera_pose);
         }
 
         // ========== Utilities ==========
-        // Clear all dynamic obstacles from both O_MAP and C_MAP layers
-        inline void clearDynamicLayers() {
+        // Clear all dynamic obstacles from both OCCUPANCY and COST layers
+        inline void clear_dynamic_layers() {
             // Reset dynamic layers to default values
             // For simplicity, we'll mark all layers as potentially having dynamic content
             for (const auto &[height, omap_index] : omap_indices_) {
                 if (omap_index < grid_data_.size()) {
-                    // Reset O_MAP to unknown (128)
+                    // Reset OCCUPANCY to unknown (128)
                     std::fill(grid_data_[omap_index].begin(), grid_data_[omap_index].end(), 128);
                 }
             }
 
             for (const auto &[height, cmap_index] : cmap_indices_) {
                 if (cmap_index < grid_data_.size()) {
-                    // Reset C_MAP to good travel (0)
+                    // Reset COST to good travel (0)
                     std::fill(grid_data_[cmap_index].begin(), grid_data_[cmap_index].end(), 0);
                 }
             }
@@ -734,8 +735,8 @@ namespace gridmap {
             costmap_dirty_ = true;
         }
 
-        // Reset specific height level (both O_MAP and C_MAP)
-        inline void resetElevationLevel(double height) {
+        // Reset specific height level (both OCCUPANCY and COST)
+        inline void reset_elevation_level(double height) {
             auto omap_it = omap_indices_.find(height);
             auto cmap_it = cmap_indices_.find(height);
 
@@ -751,16 +752,16 @@ namespace gridmap {
         }
 
         // Merge with another map (validates dual-layer compatibility)
-        inline void mergeMap(const NavigationMap &other) {
+        inline void merge_map(const NavigationMap &other) {
             // Validate dual-layer integrity before merging
-            if (!other.validateDualLayerIntegrity()) {
+            if (!other.validate_dual_layer_integrity()) {
                 throw std::runtime_error("Cannot merge: other map has invalid dual-layer structure");
             }
 
             // Add any missing heights from other map
             for (double height : other.layer_heights_) {
                 if (omap_indices_.find(height) == omap_indices_.end()) {
-                    addElevationLevel(height, height + 0.1, "merged");
+                    add_elevation_level(height, height + 0.1, "merged");
                 }
             }
 
@@ -775,7 +776,7 @@ namespace gridmap {
                     other_cmap_it->second < other.grid_data_.size() && our_omap_it->second < grid_data_.size() &&
                     our_cmap_it->second < grid_data_.size()) {
 
-                    // Merge O_MAP and C_MAP data (simplified - would need proper grid alignment)
+                    // Merge OCCUPANCY and COST data (simplified - would need proper grid alignment)
                     costmap_dirty_ = true;
                 }
             }
@@ -798,7 +799,7 @@ namespace gridmap {
             std::ofstream marker(directory / "navigation_map.info");
             if (marker.is_open()) {
                 marker << "NavigationMap saved successfully\n";
-                marker << "Layers: " << getLayerPairCount() << "\n";
+                marker << "Layers: " << get_layer_pair_count() << "\n";
                 marker.close();
             }
         }
@@ -814,13 +815,13 @@ namespace gridmap {
         }
 
         // Export to files following zoneout pattern
-        void toFiles(const std::filesystem::path &vector_path, const std::filesystem::path &raster_path) const {
+        void to_files(const std::filesystem::path &vector_path, const std::filesystem::path &raster_path) const {
             base_zone_.toFiles(vector_path, raster_path);
         }
 
         // ========== Layer Access for Visualization ==========
-        // Get O_MAP layer for visualization/export (PGM standard)
-        inline const concord::Grid<uint8_t> &getObstacleLayer(double height) const {
+        // Get OCCUPANCY layer for visualization/export (PGM standard)
+        inline const concord::Grid<uint8_t> &get_obstacle_layer(double height) const {
             auto it = omap_indices_.find(height);
             if (it != omap_indices_.end() && it->second < grid_data_.size()) {
                 return grid_data_[it->second];
@@ -835,8 +836,8 @@ namespace gridmap {
             throw std::runtime_error("No obstacle layers available");
         }
 
-        // Get C_MAP layer for visualization/export (Navigation standard)
-        inline const concord::Grid<uint8_t> &getCostLayer(double height) const {
+        // Get COST layer for visualization/export (Navigation standard)
+        inline const concord::Grid<uint8_t> &get_cost_layer(double height) const {
             auto it = cmap_indices_.find(height);
             if (it != cmap_indices_.end() && it->second < grid_data_.size()) {
                 return grid_data_[it->second];
@@ -851,19 +852,19 @@ namespace gridmap {
             throw std::runtime_error("No cost layers available");
         }
 
-        // Get composite obstacle view (max projection of all O_MAP layers)
-        inline concord::Grid<uint8_t> getCompositeObstacleView() const {
+        // Get composite obstacle view (max projection of all OCCUPANCY layers)
+        inline concord::Grid<uint8_t> get_composite_obstacle_view() const {
             if (omap_indices_.empty() || grid_data_.empty()) {
                 concord::Point center{0, 0, 0};
                 concord::Pose pose{center, {0, 0, 0}};
                 return concord::Grid<uint8_t>(1, 1, 0.1, true, pose);
             }
 
-            // Start with first O_MAP layer
+            // Start with first OCCUPANCY layer
             size_t base_index = omap_indices_.begin()->second;
             concord::Grid<uint8_t> composite = grid_data_[base_index];
 
-            // Combine with other O_MAP layers (min value = most occupied)
+            // Combine with other OCCUPANCY layers (min value = most occupied)
             for (const auto &[height, index] : omap_indices_) {
                 if (index < grid_data_.size() && index != base_index) {
                     for (size_t i = 0; i < composite.rows() * composite.cols(); ++i) {
@@ -880,19 +881,19 @@ namespace gridmap {
             return composite;
         }
 
-        // Get composite cost view (max projection of all C_MAP layers)
-        inline concord::Grid<uint8_t> getCompositeCostView() const {
+        // Get composite cost view (max projection of all COST layers)
+        inline concord::Grid<uint8_t> get_composite_cost_view() const {
             if (cmap_indices_.empty() || grid_data_.empty()) {
                 concord::Point center{0, 0, 0};
                 concord::Pose pose{center, {0, 0, 0}};
                 return concord::Grid<uint8_t>(1, 1, 0.1, true, pose);
             }
 
-            // Start with first C_MAP layer
+            // Start with first COST layer
             size_t base_index = cmap_indices_.begin()->second;
             concord::Grid<uint8_t> composite = grid_data_[base_index];
 
-            // Combine with other C_MAP layers (max cost)
+            // Combine with other COST layers (max cost)
             for (const auto &[height, index] : cmap_indices_) {
                 if (index < grid_data_.size() && index != base_index) {
                     for (size_t i = 0; i < composite.rows() * composite.cols(); ++i) {
@@ -910,10 +911,10 @@ namespace gridmap {
         }
 
         // Get 3D point cloud representation
-        inline std::vector<concord::Point> toPointCloud() const {
+        inline std::vector<concord::Point> to_point_cloud() const {
             std::vector<concord::Point> points;
 
-            // Extract occupied points from all O_MAP layers
+            // Extract occupied points from all OCCUPANCY layers
             for (const auto &[height, index] : omap_indices_) {
                 if (index < grid_data_.size()) {
                     const auto &grid = grid_data_[index];
@@ -933,8 +934,8 @@ namespace gridmap {
 
         // ========== Dual-Layer System Validation ==========
         // Check if dual-layer system is intact
-        inline bool validateDualLayerIntegrity() const {
-            // Check if every height has both O_MAP and C_MAP
+        inline bool validate_dual_layer_integrity() const {
+            // Check if every height has both OCCUPANCY and COST
             if (omap_indices_.size() != cmap_indices_.size()) {
                 return false;
             }
@@ -942,7 +943,7 @@ namespace gridmap {
             for (const auto &[height, omap_index] : omap_indices_) {
                 auto cmap_it = cmap_indices_.find(height);
                 if (cmap_it == cmap_indices_.end()) {
-                    return false; // Missing C_MAP for this height
+                    return false; // Missing COST for this height
                 }
 
                 // Check if indices are valid
@@ -954,13 +955,13 @@ namespace gridmap {
             return true;
         }
 
-        // Get layer pair count (should be even - each height has O_MAP+C_MAP)
-        inline size_t getLayerPairCount() const {
+        // Get layer pair count (should be even - each height has OCCUPANCY+COST)
+        inline size_t get_layer_pair_count() const {
             return omap_indices_.size(); // Number of height levels with dual layers
         }
 
         // Get all heights with complete dual layers
-        inline std::vector<double> getValidHeights() const {
+        inline std::vector<double> get_valid_heights() const {
             std::vector<double> valid_heights;
 
             for (const auto &[height, omap_index] : omap_indices_) {
@@ -977,8 +978,8 @@ namespace gridmap {
         }
 
         // ========== Metadata Access ==========
-        const NavigationMetadata &getMetadata() const { return nav_metadata_; }
-        NavigationMetadata &getMetadata() { return nav_metadata_; }
+        const NavigationMetadata &get_metadata() const { return nav_metadata_; }
+        NavigationMetadata &get_metadata() { return nav_metadata_; }
     };
 
 } // namespace gridmap

@@ -35,12 +35,12 @@ int main() {
         double height_max = (i + 1) * 0.2; // 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0
 
         std::string layer_name = "layer_" + std::to_string(static_cast<int>(height_max * 100)) + "cm";
-        nav_map.addElevationLevel(height_min, height_max, layer_name);
+        nav_map.add_elevation_level(height_min, height_max, layer_name);
 
         std::cout << "  - Layer " << i << ": " << height_min << "m to " << height_max << "m (" << layer_name << ")\n";
     }
 
-    std::cout << "✓ Total layers: " << nav_map.getLayerPairCount() << "\n\n";
+    std::cout << "✓ Total layers: " << nav_map.get_layer_pair_count() << "\n\n";
 
     // Add obstacles at different heights to test layer distribution
     std::cout << "🚧 Adding test obstacles at different heights:\n";
@@ -52,7 +52,7 @@ int main() {
         concord::Pose box_pose{box_center, box_rotation};
         concord::Size box_size{0.5, 0.5, 0.3}; // 50cm x 50cm x 30cm
         concord::Bound short_box{box_pose, box_size};
-        nav_map.addObstacle(short_box, "short_box", "test");
+        nav_map.add_obstacle(short_box, "short_box", "test");
         std::cout << "  1. Short box: 30cm high at (2, 2) - should appear in layers 0-1\n";
     }
 
@@ -63,7 +63,7 @@ int main() {
         concord::Pose pole_pose{pole_center, pole_rotation};
         concord::Size pole_size{0.2, 0.2, 0.8}; // 20cm x 20cm x 80cm
         concord::Bound medium_pole{pole_pose, pole_size};
-        nav_map.addObstacle(medium_pole, "medium_pole", "test");
+        nav_map.add_obstacle(medium_pole, "medium_pole", "test");
         std::cout << "  2. Medium pole: 80cm high at (4, 4) - should appear in layers 0-3\n";
     }
 
@@ -74,7 +74,7 @@ int main() {
         concord::Pose wall_pose{wall_center, wall_rotation};
         concord::Size wall_size{1.0, 0.3, 1.5}; // 100cm x 30cm x 150cm
         concord::Bound tall_wall{wall_pose, wall_size};
-        nav_map.addObstacle(tall_wall, "tall_wall", "test");
+        nav_map.add_obstacle(tall_wall, "tall_wall", "test");
         std::cout << "  3. Tall wall: 150cm high at (6, 6) - should appear in layers 0-7\n";
     }
 
@@ -85,12 +85,12 @@ int main() {
         concord::Pose antenna_pose{antenna_center, antenna_rotation};
         concord::Size antenna_size{0.1, 0.1, 2.0}; // 10cm x 10cm x 200cm
         concord::Bound very_tall_antenna{antenna_pose, antenna_size};
-        nav_map.addObstacle(very_tall_antenna, "antenna", "test");
+        nav_map.add_obstacle(very_tall_antenna, "antenna", "test");
         std::cout << "  4. Antenna: 200cm high at (8, 8) - should appear in ALL layers 0-9\n";
     }
 
     std::cout << "\n🔍 Validation:\n";
-    if (nav_map.validateDualLayerIntegrity()) {
+    if (nav_map.validate_dual_layer_integrity()) {
         std::cout << "✓ Dual-layer system integrity: PASSED\n";
     } else {
         std::cout << "✗ Dual-layer system integrity: FAILED\n";
@@ -101,7 +101,7 @@ int main() {
     std::cout << "\n💾 Exporting all layers to output/ folder:\n";
     std::filesystem::create_directories("output");
 
-    auto heights = nav_map.getValidHeights();
+    auto heights = nav_map.get_valid_heights();
     std::sort(heights.begin(), heights.end());
 
     for (size_t i = 0; i < heights.size(); ++i) {
@@ -109,7 +109,7 @@ int main() {
         std::string filename = "output/test_layer_" + std::to_string(static_cast<int>(height * 100)) + "cm.pgm";
 
         try {
-            auto obstacle_grid = nav_map.getObstacleMapAtHeight(height);
+            auto obstacle_grid = nav_map.get_obstacle_map_at_height(height);
             gridmap::PgmExporter::exportObstacleMapToPGM(obstacle_grid, filename);
 
             // Count obstacles by checking for black pixels (0 = occupied)

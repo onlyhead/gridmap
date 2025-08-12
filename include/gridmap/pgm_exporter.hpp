@@ -28,14 +28,14 @@ public:
               negate(0), occupied_thresh(0.65), free_thresh(0.196) {}
     };
     
-    // Export O_MAP (obstacle map) to PGM format with strict standard compliance
-    // O_MAP: 0=occupied/black, 255=free/white, 128=unknown/gray -> PGM standard
+    // Export OCCUPANCY (obstacle map) to PGM format with strict standard compliance
+    // OCCUPANCY: 0=occupied/black, 255=free/white, 128=unknown/gray -> PGM standard
     static void exportObstacleMapToPGM(const concord::Grid<uint8_t>& omap_grid,
                                        const std::filesystem::path& pgm_path,
                                        const PgmMetadata& metadata = PgmMetadata{},
                                        bool use_binary = true) {
         
-        // Validate O_MAP values (should be PGM-compliant already)
+        // Validate OCCUPANCY values (should be PGM-compliant already)
         validateOMapValues(omap_grid);
         
         // Write PGM file
@@ -51,15 +51,15 @@ public:
         writeYAMLMetadata(metadata, yaml_path);
     }
     
-    // Export C_MAP (cost map) to PGM format with proper conversion
-    // C_MAP: 0=good_travel, 255=impossible -> Convert to PGM standard
+    // Export COST (cost map) to PGM format with proper conversion
+    // COST: 0=good_travel, 255=impossible -> Convert to PGM standard
     static void exportCostMapToPGM(const concord::Grid<uint8_t>& cmap_grid,
                                    const std::filesystem::path& pgm_path,
                                    const PgmMetadata& metadata = PgmMetadata{},
                                    bool use_binary = true) {
         
-        // Convert C_MAP to O_MAP format for PGM export
-        // C_MAP: 0=good -> O_MAP: 255=free (invert values)
+        // Convert COST to OCCUPANCY format for PGM export
+        // COST: 0=good -> OCCUPANCY: 255=free (invert values)
         auto converted_grid = cmap_grid; // Copy structure
         
         for (size_t r = 0; r < cmap_grid.rows(); ++r) {
@@ -137,8 +137,8 @@ public:
                     uint8_t layer_val = layers[i](r, c);
                     
                     if (use_max_projection) {
-                        // For O_MAP: max value means more occupied (conservative)
-                        // For C_MAP: max value means higher cost (conservative)
+                        // For OCCUPANCY: max value means more occupied (conservative)
+                        // For COST: max value means higher cost (conservative)
                         composite.set_value(r, c, std::max(current, layer_val));
                     } else {
                         // Min projection (optimistic)
@@ -152,10 +152,10 @@ public:
     }
     
 private:
-    // Validate that O_MAP grid contains proper PGM values
+    // Validate that OCCUPANCY grid contains proper PGM values
     static void validateOMapValues(const concord::Grid<uint8_t>& grid) {
         // Check for common values - no need to validate every cell
-        // Just ensure it's a reasonable O_MAP
+        // Just ensure it's a reasonable OCCUPANCY
         bool has_free = false, has_occupied = false, has_unknown = false;
         
         size_t sample_size = std::min(static_cast<size_t>(100), grid.rows() * grid.cols());
@@ -188,7 +188,7 @@ private:
         
         // Write PGM P5 header
         file << "P5\n";
-        file << "# Created by GridMap library - O_MAP export\n";
+        file << "# Created by GridMap library - OCCUPANCY export\n";
         file << "# Resolution: " << metadata.resolution << " m/pixel\n"; 
         file << "# Origin: [" << metadata.origin[0] << ", " << metadata.origin[1] 
              << ", " << metadata.origin[2] << "]\n";
@@ -219,7 +219,7 @@ private:
         
         // Write PGM P2 header
         file << "P2\n";
-        file << "# Created by GridMap library - O_MAP export\n";
+        file << "# Created by GridMap library - OCCUPANCY export\n";
         file << "# Resolution: " << metadata.resolution << " m/pixel\n";
         file << "# Origin: [" << metadata.origin[0] << ", " << metadata.origin[1] 
              << ", " << metadata.origin[2] << "]\n";

@@ -11,7 +11,7 @@ namespace gridmap {
 class LayerManager {
 public:
     // Find appropriate layer for given height
-    static size_t getLayerIndex(double height, 
+    static size_t get_layer_index(double height, 
                                 const std::vector<double>& layer_heights) {
         if (layer_heights.empty()) {
             throw std::runtime_error("No layers available");
@@ -29,7 +29,7 @@ public:
     }
     
     // Find the two layers that bracket the given height for interpolation
-    static std::pair<size_t, size_t> getBracketingLayers(
+    static std::pair<size_t, size_t> get_bracketing_layers(
         double height,
         const std::vector<double>& layer_heights) {
         
@@ -64,7 +64,7 @@ public:
     }
     
     // Interpolate between two layer values based on height
-    static double interpolateValue(double height,
+    static double interpolate_value(double height,
                                    const std::vector<double>& layer_heights,
                                    size_t lower_layer,
                                    size_t upper_layer,
@@ -93,7 +93,7 @@ public:
     }
     
     // Generate optimal layer heights for environment
-    static std::vector<double> generateLayerHeights(double min_height,
+    static std::vector<double> generate_layer_heights(double min_height,
                                                     double max_height,
                                                     double robot_height,
                                                     size_t num_layers = 0) {
@@ -124,7 +124,7 @@ public:
     }
     
     // Generate layer heights optimized for specific environments
-    static std::vector<double> generateBarnLayers(double robot_height = 1.0,
+    static std::vector<double> generate_barn_layers(double robot_height = 1.0,
                                                   double max_barn_height = 5.0) {
         std::vector<double> heights;
         
@@ -144,7 +144,7 @@ public:
         return heights;
     }
     
-    static std::vector<double> generateWarehouseLayers(double robot_height = 1.0,
+    static std::vector<double> generate_warehouse_layers(double robot_height = 1.0,
                                                        double shelf_height = 2.5,
                                                        double max_warehouse_height = 10.0) {
         std::vector<double> heights;
@@ -167,7 +167,7 @@ public:
     }
     
     // Validate layer height sequence
-    static bool validateLayerHeights(const std::vector<double>& layer_heights) {
+    static bool validate_layer_heights(const std::vector<double>& layer_heights) {
         if (layer_heights.size() < 2) {
             return false; // Need at least 2 layers for dual-layer system
         }
@@ -183,7 +183,7 @@ public:
     }
     
     // Add a new layer height while maintaining sorted order
-    static void addLayerHeight(std::vector<double>& layer_heights, double new_height) {
+    static void add_layer_height(std::vector<double>& layer_heights, double new_height) {
         // Find insertion point to maintain sorted order
         auto it = std::lower_bound(layer_heights.begin(), layer_heights.end(), new_height);
         
@@ -194,7 +194,7 @@ public:
     }
     
     // Remove a layer height
-    static bool removeLayerHeight(std::vector<double>& layer_heights, double height) {
+    static bool remove_layer_height(std::vector<double>& layer_heights, double height) {
         auto it = std::find_if(layer_heights.begin(), layer_heights.end(),
                               [height](double h) { return std::abs(h - height) < 1e-9; });
         
@@ -207,7 +207,7 @@ public:
     }
     
     // Calculate total height range covered by layers
-    static double getTotalHeightRange(const std::vector<double>& layer_heights) {
+    static double get_total_height_range(const std::vector<double>& layer_heights) {
         if (layer_heights.empty()) {
             return 0.0;
         }
@@ -216,12 +216,12 @@ public:
     }
     
     // Get average layer spacing
-    static double getAverageLayerSpacing(const std::vector<double>& layer_heights) {
+    static double get_average_layer_spacing(const std::vector<double>& layer_heights) {
         if (layer_heights.size() < 2) {
             return 0.0;
         }
         
-        double total_range = getTotalHeightRange(layer_heights);
+        double total_range = get_total_height_range(layer_heights);
         return total_range / (layer_heights.size() - 1);
     }
 };

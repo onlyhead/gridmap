@@ -127,13 +127,13 @@ int main() {
 
     std::cout << "✓ NavigationMap created with:\n";
     std::cout << "  - Resolution: " << (resolution * 100) << "cm per pixel\n";
-    std::cout << "  - Mandatory dual-layer system (O_MAP + C_MAP)\n";
+    std::cout << "  - Mandatory dual-layer system (OCCUPANCY + COST)\n";
     std::cout << "  - Initial obstacles: " << initial_obstacles.size() << " concord::Bound objects\n";
     std::cout << "  - Integrated with zoneout::Zone infrastructure\n";
-    std::cout << "  - Layer pairs: " << nav_map.getLayerPairCount() << "\n";
+    std::cout << "  - Layer pairs: " << nav_map.get_layer_pair_count() << "\n";
 
     // Verify dual-layer integrity
-    if (nav_map.validateDualLayerIntegrity()) {
+    if (nav_map.validate_dual_layer_integrity()) {
         std::cout << "✓ Dual-layer system validation: PASSED\n";
     } else {
         std::cout << "✗ Dual-layer system validation: FAILED\n";
@@ -144,16 +144,16 @@ int main() {
 
     printStepHeader(5, "Add elevation layers for different heights");
     // Add layers for robot navigation at different elevations
-    nav_map.addElevationLevel(0.0, 0.5, "ground_level");   // Ground level (0-50cm)
-    nav_map.addElevationLevel(0.5, 1.0, "low_obstacles");  // Low obstacles (50cm-1m)
-    nav_map.addElevationLevel(1.0, 2.0, "high_obstacles"); // High obstacles (1-2m)
+    nav_map.add_elevation_level(0.0, 0.5, "ground_level");   // Ground level (0-50cm)
+    nav_map.add_elevation_level(0.5, 1.0, "low_obstacles");  // Low obstacles (50cm-1m)
+    nav_map.add_elevation_level(1.0, 2.0, "high_obstacles"); // High obstacles (1-2m)
 
     std::cout << "✓ Added 3 elevation layers:\n";
-    auto valid_heights = nav_map.getValidHeights();
+    auto valid_heights = nav_map.get_valid_heights();
     for (size_t i = 0; i < valid_heights.size(); ++i) {
-        std::cout << "  - Layer " << i << ": " << valid_heights[i] << "m (O_MAP + C_MAP)\n";
+        std::cout << "  - Layer " << i << ": " << valid_heights[i] << "m (OCCUPANCY + COST)\n";
     }
-    std::cout << "✓ Total layer pairs: " << nav_map.getLayerPairCount() << "\n";
+    std::cout << "✓ Total layer pairs: " << nav_map.get_layer_pair_count() << "\n";
 
     printStepHeader(6, "Add static obstacles using concord::Bound (oriented bounding boxes)");
 
@@ -165,7 +165,7 @@ int main() {
     concord::Pose wall_pose{wall_center, wall_rotation};
     concord::Size wall_size{2.0, 0.5, 2.0}; // 2m wide, 0.5m thick, 2m high
     concord::Bound wall_bound{wall_pose, wall_size};
-    nav_map.addObstacle(wall_bound, "wall_1", "wall");
+    nav_map.add_obstacle(wall_bound, "wall_1", "wall");
 
     // Low barrier (0.6m high, 3m long, 0.3m thick) at position (13.5, 5.15) rotated 45°
     concord::Point barrier_center{13.5, 5.15, 0.3};   // Center at 0.3m height (half of 0.6m)
@@ -173,7 +173,7 @@ int main() {
     concord::Pose barrier_pose{barrier_center, barrier_rotation};
     concord::Size barrier_size{3.0, 0.3, 0.6}; // 3m long, 0.3m thick, 0.6m high
     concord::Bound barrier_bound{barrier_pose, barrier_size};
-    nav_map.addObstacle(barrier_bound, "barrier_1", "barrier");
+    nav_map.add_obstacle(barrier_bound, "barrier_1", "barrier");
 
     // Equipment box (1.5m high, 1m x 1m footprint) at position (18, 3)
     concord::Point box_center{18.0, 3.0, 0.75}; // Center at 0.75m height (half of 1.5m)
@@ -181,7 +181,7 @@ int main() {
     concord::Pose box_pose{box_center, box_rotation};
     concord::Size box_size{1.0, 1.0, 1.5}; // 1m x 1m x 1.5m
     concord::Bound box_bound{box_pose, box_size};
-    nav_map.addObstacle(box_bound, "equipment_box", "equipment");
+    nav_map.add_obstacle(box_bound, "equipment_box", "equipment");
 
     std::cout << "✓ Added oriented bounding box obstacles:\n";
     std::cout << "  - Wall: 2m×0.5m×2m at (6, 8.25) - no rotation\n";
@@ -196,18 +196,18 @@ int main() {
     // Define a work area
     std::vector<concord::Point> work_area_points = {{2.0, 2.0, 0.0}, {8.0, 2.0, 0.0}, {8.0, 4.0, 0.0}, {2.0, 4.0, 0.0}};
     concord::Polygon work_area(work_area_points);
-    nav_map.addSemanticRegion(work_area, "work_zone", "workspace", 0, true);
+    nav_map.add_semantic_region(work_area, "work_zone", "workspace", 0, true);
 
     // Define a storage area
     std::vector<concord::Point> storage_points = {
         {16.0, 10.0, 0.0}, {19.0, 10.0, 0.0}, {19.0, 13.0, 0.0}, {16.0, 13.0, 0.0}};
     concord::Polygon storage_area(storage_points);
-    nav_map.addSemanticRegion(storage_area, "storage_zone", "storage", 0, true);
+    nav_map.add_semantic_region(storage_area, "storage_zone", "storage", 0, true);
 
     std::cout << "✓ Added semantic regions:\n";
     std::cout << "  - Work zone: 6m x 2m area with workspace properties\n";
     std::cout << "  - Storage zone: 3m x 3m area with storage properties\n";
-    std::cout << "✓ Semantic regions affect C_MAP costs for intelligent planning\n";
+    std::cout << "✓ Semantic regions affect COST costs for intelligent planning\n";
 
     printSectionHeader("4. SENSOR INTEGRATION - Dynamic Updates");
 
@@ -223,7 +223,7 @@ int main() {
         {4.7, 3.0, 0.0}, // Detected obstacle point 3
     };
 
-    nav_map.updateFromLaserScan(laser_points, 0.3, robot_pose); // Scan at 30cm height
+    nav_map.update_from_laser_scan(laser_points, 0.3, robot_pose); // Scan at 30cm height
 
     std::cout << "✓ Updated from 2D laser scan:\n";
     std::cout << "  - Robot position: (" << robot_pos.x << ", " << robot_pos.y << ")\n";
@@ -240,7 +240,7 @@ int main() {
     };
 
     concord::Pose sensor_pose{{10.0, 6.0, 1.0}, {0.0, 0.0, 1.57}}; // Sensor at 1m height, facing east
-    nav_map.updateFromPointCloud(cloud_points, sensor_pose);
+    nav_map.update_from_point_cloud(cloud_points, sensor_pose);
 
     std::cout << "✓ Updated from 3D point cloud:\n";
     std::cout << "  - Sensor position: (10.0, 6.0, 1.0)\n";
@@ -260,10 +260,10 @@ int main() {
     };
 
     for (const auto &point : test_points) {
-        bool traversable = nav_map.isTraversable(point);
-        double obstacle_height = nav_map.getObstacleHeight(point);
-        double clearance = nav_map.getClearanceHeight(point);
-        uint8_t cost = nav_map.getCostValue(point, 0.25); // Check cost at 25cm height
+        bool traversable = nav_map.is_traversable(point);
+        double obstacle_height = nav_map.get_obstacle_height(point);
+        double clearance = nav_map.get_clearance_height(point);
+        uint8_t cost = nav_map.get_cost_value(point, 0.25); // Check cost at 25cm height
 
         std::cout << "Point (" << point.x << ", " << point.y << "):\n";
         std::cout << "  - Traversable: " << (traversable ? "YES" : "NO") << "\n";
@@ -275,9 +275,9 @@ int main() {
     printStepHeader(11, "Generate costmaps for path planners");
 
     // Get different costmap representations
-    const auto &combined_costmap = nav_map.getCostmap();    // All layers combined
-    auto ground_costmap = nav_map.getCostmapAtHeight(0.25); // Ground level only
-    auto composite_view = nav_map.getCompositeCostView();   // Max projection
+    const auto &combined_costmap = nav_map.get_costmap();    // All layers combined
+    auto ground_costmap = nav_map.get_costmap_at_height(0.25); // Ground level only
+    auto composite_view = nav_map.get_composite_cost_view();   // Max projection
 
     std::cout << "✓ Generated costmaps for path planning:\n";
     std::cout << "  - Combined costmap: " << combined_costmap.rows() << "x" << combined_costmap.cols() << " cells\n";
@@ -296,7 +296,7 @@ int main() {
     std::filesystem::create_directories("output");
     
     // Export ALL height layers (including ground level with obstacles)
-    auto export_heights = nav_map.getValidHeights();
+    auto export_heights = nav_map.get_valid_heights();
     std::sort(export_heights.begin(), export_heights.end());
 
     for (size_t i = 0; i < export_heights.size(); ++i) {
@@ -306,7 +306,7 @@ int main() {
         std::string yaml_filename = "output/obstacle_map_" + std::to_string(static_cast<int>(height * 100)) + "cm.yaml";
 
         try {
-            auto obstacle_grid = nav_map.getObstacleMapAtHeight(height);
+            auto obstacle_grid = nav_map.get_obstacle_map_at_height(height);
             gridmap::PgmExporter::exportObstacleMapToPGM(obstacle_grid, filename);
 
             // Create corresponding YAML metadata
@@ -365,28 +365,28 @@ int main() {
     printStepHeader(14, "3D point cloud export");
 
     // Generate point cloud representation
-    auto point_cloud = nav_map.toPointCloud();
+    auto point_cloud = nav_map.to_point_cloud();
     std::cout << "✓ Generated 3D point cloud: " << point_cloud.size() << " points\n";
-    std::cout << "  - Contains all occupied voxels from O_MAP layers\n";
+    std::cout << "  - Contains all occupied voxels from OCCUPANCY layers\n";
     std::cout << "  - Ready for 3D visualization or SLAM integration\n";
 
     printStepHeader(15, "Layer management and validation");
 
     // Demonstrate layer management
     std::cout << "Layer system status:\n";
-    std::cout << "  - Valid heights: " << nav_map.getValidHeights().size() << "\n";
-    std::cout << "  - Layer pairs: " << nav_map.getLayerPairCount() << "\n";
-    std::cout << "  - Dual-layer integrity: " << (nav_map.validateDualLayerIntegrity() ? "VALID" : "INVALID") << "\n";
+    std::cout << "  - Valid heights: " << nav_map.get_valid_heights().size() << "\n";
+    std::cout << "  - Layer pairs: " << nav_map.get_layer_pair_count() << "\n";
+    std::cout << "  - Dual-layer integrity: " << (nav_map.validate_dual_layer_integrity() ? "VALID" : "INVALID") << "\n";
 
     // Demonstrate layer reset
-    nav_map.resetElevationLevel(0.25); // Reset ground level
+    nav_map.reset_elevation_level(0.25); // Reset ground level
     std::cout << "✓ Reset ground level layer (demo of dynamic updates)\n";
 
     printStepHeader(16, "Performance and memory usage");
 
     // Demonstrate clearing dynamic obstacles
     auto start_time = std::chrono::high_resolution_clock::now();
-    nav_map.clearDynamicLayers();
+    nav_map.clear_dynamic_layers();
     auto end_time = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
@@ -397,7 +397,7 @@ int main() {
 
     std::cout << "\n🎉 Successfully demonstrated GridMap library capabilities:\n\n";
 
-    std::cout << "✅ Mandatory dual-layer system (O_MAP + C_MAP)\n";
+    std::cout << "✅ Mandatory dual-layer system (OCCUPANCY + COST)\n";
     std::cout << "✅ Multi-height 2.5D navigation mapping\n";
     std::cout << "✅ Oriented bounding box obstacles (concord::Bound)\n";
     std::cout << "✅ Zoneout ecosystem integration (WGS84/ENU)\n";
